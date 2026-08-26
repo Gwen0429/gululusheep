@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Gululu Sheep — Editor</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: white;
+            color: #111;
+            font-family: Georgia, "Times New Roman", "Songti SC", serif;
+        }
+
+        .page {
+            width: min(900px, calc(100% - 40px));
+            margin: 60px auto 120px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 60px;
+            font-size: 14px;
+        }
+
+        .brand {
+            font-size: 18px;
+        }
+
+        button {
+            border: 1px solid #111;
+            background: white;
+            padding: 8px 16px;
+            font-family: inherit;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #111;
+            color: white;
+        }
+
+        .title {
+            width: 100%;
+            border: none;
+            outline: none;
+            font-family: inherit;
+            font-size: clamp(32px, 6vw, 56px);
+            line-height: 1.15;
+            margin-bottom: 15px;
+            color: #111;
+        }
+
+        .date {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 45px;
+        }
+
+        .editor {
+            min-height: 500px;
+            outline: none;
+            font-size: 19px;
+            line-height: 1.8;
+        }
+
+        .editor:empty:before {
+            content: "开始写吧……";
+            color: #aaa;
+        }
+
+        .editor p {
+            margin: 0 0 1.5em;
+        }
+
+        .editor img {
+            display: block;
+            width: auto;
+            max-width: 100%;
+            height: auto;
+            max-height: 75vh;
+            object-fit: contain;
+            margin: 35px auto;
+        }
+
+        .editor img.square {
+            max-width: min(520px, 80%);
+        }
+
+        .editor img.portrait {
+            max-width: min(520px, 80%);
+            max-height: 70vh;
+        }
+
+        .drop-hint {
+            margin-top: 60px;
+            padding: 30px;
+            border: 1px dashed #bbb;
+            color: #777;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .drop-hint.dragging {
+            border-color: #111;
+            color: #111;
+        }
+
+        @media (max-width: 600px) {
+
+            .page {
+                width: calc(100% - 28px);
+                margin-top: 30px;
+            }
+
+            .topbar {
+                margin-bottom: 40px;
+            }
+
+            .editor {
+                font-size: 18px;
+            }
+
+            .editor img {
+                max-width: 100%;
+                max-height: 65vh;
+                margin: 25px auto;
+            }
+
+            .editor img.square,
+            .editor img.portrait {
+                max-width: 100%;
+            }
+
+            .drop-hint {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="page">
+
+    <div class="topbar">
+        <div class="brand">gululusheep</div>
+
+        <button id="publishButton">
+            发布
+        </button>
+    </div>
+
+    <input
+        id="title"
+        class="title"
+        type="text"
+        placeholder="标题"
+    >
+
+    <div id="date" class="date"></div>
+
+    <div
+        id="editor"
+        class="editor"
+        contenteditable="true"
+        spellcheck="true"
+    ></div>
+
+    <div id="dropHint" class="drop-hint">
+        把照片拖到这里，或者直接拖到文章中的任何位置
+    </div>
+
+</div>
+
+<script>
+
+const editor = document.getElementById("editor");
+const title = document.getElementById("title");
+const dateElement = document.getElementById("date");
+const publishButton = document.getElementById("publishButton");
+const dropHint = document.getElementById("dropHint");
+
+
+// --------------------------------------------------
+// 日期
+// --------------------------------------------------
+
+function getToday() {
+
+    const now = new Date();
+
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+}
+
+dateElement.textContent = getToday();
+
+
+// --------------------------------------------------
+// 图片处理
+// --------------------------------------------------
+
+function insertImage(file) {
+
+    if (!file.type.startsWith("image/")) {
+        return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+
+        const img = document.createElement("img");
+
+        img.src = event.target.result;
+
+        img.alt = file.name;
+
+        img.onload = function() {
+
+            const ratio = img.naturalWidth / img.naturalHeight;
+
+            if (Math.abs(ratio - 1) < 0.1) {
+
+                img.classList.add("square");
+
+            } else if (ratio < 0.8) {
+
+                img.classList.add("portrait");
+
+            }
+
+        };
+
+        insertNodeAtCursor(img);
+
+    };
+
+    reader.readAsDataURL(file);
+}
+
+
+// --------------------------------------------------
+// 在当前光标位置插入图片
+// --------------------------------------------------
+
+function insertNodeAtCursor(node) {
+
+    const selection = window.getSelection();
+
+    if (!selection || selection.rangeCount === 0) {
+
+        editor.appendChild(node);
+
+        return;
+    }
+
+    const range = selection.getRangeAt(0);
+
+    if (!editor.contains(range.commonAncestorContainer)) {
+
+        editor.appendChild(node);
+
+        return;
+    }
+
+    range.deleteContents();
+    range.insertNode(node);
+
+    range.setStartAfter(node);
+    range.collapse(true);
+
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+}
+
+
+// --------------------------------------------------
+// 拖放图片
+// --------------------------------------------------
+
+editor.addEventListener("dragover", function(event) {
+
+    event.preventDefault();
+
+    dropHint.classList.add("dragging");
+
+});
+
+
+editor.addEventListener("dragleave", function() {
+
+    dropHint.classList.remove("dragging");
+
+});
+
+
+editor.addEventListener("drop", function(event) {
+
+    event.preventDefault();
+
+    dropHint.classList.remove("dragging");
+
+    const files = Array.from(event.dataTransfer.files);
+
+    files.forEach(function(file) {
+
+        insertImage(file);
+
+    });
+
+});
+
+
+// 页面底部拖放区域
+
+dropHint.addEventListener("dragover", function(event) {
+
+    event.preventDefault();
+
+    dropHint.classList.add("dragging");
+
+});
+
+
+dropHint.addEventListener("dragleave", function() {
+
+    dropHint.classList.remove("dragging");
+
+});
+
+
+dropHint.addEventListener("drop", function(event) {
+
+    event.preventDefault();
+
+    dropHint.classList.remove("dragging");
+
+    const files = Array.from(event.dataTransfer.files);
+
+    files.forEach(function(file) {
+
+        insertImage(file);
+
+    });
+
+});
+
+
+// --------------------------------------------------
+// 发布
+// --------------------------------------------------
+
+publishButton.addEventListener("click", function() {
+
+    const articleTitle = title.value.trim() || "Untitled";
+
+    const articleBody = editor.innerHTML.trim();
+
+    if (!articleBody) {
+
+        alert("还没有写内容。");
+
+        return;
+    }
+
+
+    const articleDate = getToday();
+
+
+    const articleHTML = `<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
+
+<title>${escapeHTML(articleTitle)} — Gululu Sheep</title>
+
+<style>
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+
+    margin: 0;
+
+    background: white;
+
+    color: #111;
+
+    font-family:
+        Georgia,
+        "Times New Roman",
+        "Songti SC",
+        serif;
+}
+
+article {
+
+    width: min(900px, calc(100% - 40px));
+
+    margin: 60px auto 120px;
+}
+
+h1 {
+
+    font-size:
+        clamp(32px, 6vw, 56px);
+
+    line-height: 1.15;
+
+    font-weight: normal;
+
+    margin: 0 0 15px;
+}
+
+.date {
+
+    color: #666;
+
+    font-size: 14px;
+
+    margin-bottom: 45px;
+}
+
+.content {
+
+    font-size: 19px;
+
+    line-height: 1.8;
+}
+
+.content p {
+
+    margin: 0 0 1.5em;
+}
+
+.content img {
+
+    display: block;
+
+    width: auto;
+
+    max-width: 100%;
+
+    height: auto;
+
+    max-height: 75vh;
+
+    object-fit: contain;
+
+    margin: 35px auto;
+}
+
+.content img.square {
+
+    max-width: min(520px, 80%);
+}
+
+.content img.portrait {
+
+    max-width: min(520px, 80%);
+
+    max-height: 70vh;
+}
+
+@media (max-width: 600px) {
+
+    article {
+
+        width:
+            calc(100% - 28px);
+
+        margin-top: 30px;
+    }
+
+    .content {
+
+        font-size: 18px;
+    }
+
+    .content img,
+    .content img.square,
+    .content img.portrait {
+
+        max-width: 100%;
+
+        max-height: 65vh;
+    }
+}
+
+</style>
+
+</head>
+
+<body>
+
+<article>
+
+<h1>${escapeHTML(articleTitle)}</h1>
+
+<div class="date">
+${articleDate}
+</div>
+
+<div class="content">
+
+${articleBody}
+
+</div>
+
+</article>
+
+</body>
+
+</html>`;
+
+
+    const blob = new Blob(
+        [articleHTML],
+        { type: "text/html;charset=utf-8" }
+    );
+
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+
+    link.href = url;
+
+    link.download =
+        createFilename(articleTitle) + ".html";
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+
+    alert(
+        "文章已经生成。\n\n" +
+        "下一步把下载的 HTML 放进网站的文章目录即可。"
+    );
+
+});
+
+
+// --------------------------------------------------
+// HTML 转义
+// --------------------------------------------------
+
+function escapeHTML(text) {
+
+    return text
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+}
+
+
+// --------------------------------------------------
+// 文件名
+// --------------------------------------------------
+
+function createFilename(text) {
+
+    return text
+
+        .trim()
+
+        .replace(/[\/\\:*?"<>|]/g, "")
+
+        .replace(/\s+/g, "-")
+
+        || "article";
+
+}
+
+</script>
+
+</body>
+
+</html>

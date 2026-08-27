@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Publish — Gululu Sheep</title>
 
 <style>
+
 body {
     margin: 0;
     background: white;
@@ -34,6 +37,7 @@ button {
     margin-top: 25px;
     line-height: 1.7;
 }
+
 </style>
 </head>
 
@@ -74,13 +78,29 @@ document.getElementById("publishButton").onclick = function () {
         return;
     }
 
+    if (!titleEn) {
+        alert("请填写英文标题");
+        return;
+    }
+
     if (!date) {
         alert("请填写日期");
         return;
     }
 
+    if (!zh.trim()) {
+        alert("请填写中文正文");
+        return;
+    }
+
+    if (!en.trim()) {
+        alert("请填写英文正文");
+        return;
+    }
+
     var slug = titleEn
         .toLowerCase()
+        .trim()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "");
 
@@ -89,26 +109,34 @@ document.getElementById("publishButton").onclick = function () {
     }
 
     var html = "<!DOCTYPE html>" +
+
         "<html lang='zh-CN'>" +
+
         "<head>" +
+
         "<meta charset='UTF-8'>" +
+
         "<meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
-        "<title>" + titleZh + " — Gululu Sheep</title>" +
+
+        "<title>" + titleZh + " — " + titleEn + " — Gululu Sheep</title>" +
+
         "<link rel='stylesheet' href='../style.css'>" +
+
         "</head>" +
+
         "<body>" +
+
         "<main>" +
+
         "<article>" +
 
         "<p><a href='../index.html'>Gululu Sheep</a></p>" +
-
-        "<br>" +
 
         "<time>" + date + "</time>" +
 
         "<h1>" + titleZh + "</h1>" +
 
-        "<p>" + titleEn + "</p>" +
+        "<h2 class='article-title-en'>" + titleEn + "</h2>" +
 
         "<div class='language'>" +
 
@@ -119,36 +147,48 @@ document.getElementById("publishButton").onclick = function () {
         "</div>" +
 
         "<div id='zh'>" +
+
         zh +
+
         "</div>" +
 
         "<div id='en' style='display:none;'>" +
+
         en +
+
         "</div>" +
 
         "</article>" +
+
         "</main>" +
 
         "<script>" +
 
         "function showZh() {" +
+
         "document.getElementById('zh').style.display='';" +
+
         "document.getElementById('en').style.display='none';" +
+
         "}" +
 
         "function showEn() {" +
+
         "document.getElementById('zh').style.display='none';" +
+
         "document.getElementById('en').style.display='';" +
+
         "}" +
 
         "<\/script>" +
 
         "</body>" +
+
         "</html>";
 
     var blob = new Blob(
         [html],
-        {type: "text/html"}
+        {type: "text/html;charset=utf-8"}
     );
 
     var url = URL.createObjectURL(blob);
@@ -156,6 +196,7 @@ document.getElementById("publishButton").onclick = function () {
     var link = document.createElement("a");
 
     link.href = url;
+
     link.download = slug + ".html";
 
     document.body.appendChild(link);
@@ -164,10 +205,13 @@ document.getElementById("publishButton").onclick = function () {
 
     document.body.removeChild(link);
 
-    URL.revokeObjectURL(url);
+    setTimeout(function () {
+        URL.revokeObjectURL(url);
+    }, 1000);
 
     document.getElementById("status").textContent =
         "文章已经生成：" + slug + ".html";
+
 };
 
 </script>

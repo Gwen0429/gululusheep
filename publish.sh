@@ -32,41 +32,58 @@ from pathlib import Path
 from html.parser import HTMLParser
 import sys
 import re
+import html
 
 index_path = Path(sys.argv[1])
 reports_path = Path(sys.argv[2])
+
 
 class ArticleParser(HTMLParser):
 
     def __init__(self):
         super().__init__()
-        self.title = ""
+
+        self.title_zh = ""
+        self.title_en = ""
         self.date = ""
-        self.h1 = False
-        self.time = False
+
+        self.in_h1 = False
+        self.in_h2 = False
+        self.in_time = False
 
     def handle_starttag(self, tag, attrs):
 
         if tag == "h1":
-            self.h1 = True
+            self.in_h1 = True
 
-        if tag == "time":
-            self.time = True
+        elif tag == "h2":
+            classes = dict(attrs).get("class", "")
+            if "article-title-en" in classes:
+                self.in_h2 = True
+
+        elif tag == "time":
+            self.in_time = True
 
     def handle_endtag(self, tag):
 
         if tag == "h1":
-            self.h1 = False
+            self.in_h1 = False
 
-        if tag == "time":
-            self.time = False
+        elif tag == "h2":
+            self.in_h2 = False
+
+        elif tag == "time":
+            self.in_time = False
 
     def handle_data(self, data):
 
-        if self.h1:
-            self.title += data.strip()
+        if self.in_h1:
+            self.title_zh += data.strip()
 
-        if self.time:
+        if self.in_h2:
+            self.title_en += data.strip()
+
+        if self.in_time:
             self.date += data.strip()
 
 
@@ -84,11 +101,12 @@ for file in sorted(
         file.read_text(encoding="utf-8")
     )
 
-    if parser.title:
+    if parser.title_zh:
 
         articles.append({
             "file": file.name,
-            "title": parser.title,
+            "title_zh": parser.title_zh,
+            "title_en": parser.title_en,
             "date": parser.date
         })
 
@@ -104,23 +122,35 @@ article_html = []
 
 for article in articles:
 
+    title_en_html = ""
+
+    if article["title_en"]:
+        title_en_html = f"""
+            <div class="home-title-en">
+                {html.escape(article["title_en"])}
+            </div>
+        """
+
     article_html.append(
         f"""
         <article class="home-entry">
 
             <h2>
-                <a href="reports/{article['file']}">
-                    {article['title']}
+                <a href="reports/{html.escape(article["file"])}">
+                    {html.escape(article["title_zh"])}
                 </a>
             </h2>
 
+            {title_en_html}
+
             <time>
-                {article['date']}
+                {html.escape(article["date"])}
             </time>
 
         </article>
         """
     )
+
 
 new_section = (
     start_marker
@@ -129,6 +159,7 @@ new_section = (
     + "\n"
     + end_marker
 )
+
 
 if start_marker in old and end_marker in old:
 
@@ -152,6 +183,7 @@ else:
         new_section + "\n</main>"
     )
 
+
 index_path.write_text(
     new,
     encoding="utf-8"
@@ -169,11 +201,12 @@ cd "$PROJECT"
 
 git add .
 
-git commit -m "Publish article: $FILENAME" || true
+git commit -m "Fix bilingual publishing and clean article index" || true
 
 git push
 
 echo ""
+
 echo "=============================="
 echo "发布完成。"
 echo "=============================="

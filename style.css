@@ -12,6 +12,7 @@ body {
     color: #111;
     font-family: Georgia, "Times New Roman", serif;
     line-height: 1.7;
+    text-align: center;
 }
 
 main {
@@ -29,18 +30,6 @@ h1 {
     margin: 0 0 40px;
 }
 
-h2 {
-    font-size: 1.4rem;
-    font-weight: normal;
-    margin-bottom: 30px;
-}
-
-h3 {
-    font-size: 1.15rem;
-    font-weight: normal;
-    margin: 5px 0 0;
-}
-
 p {
     margin: 0 0 14px;
 }
@@ -55,12 +44,16 @@ a:hover {
     opacity: 0.6;
 }
 
-article {
-    margin-bottom: 35px;
+.articles {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
 }
 
-time {
-    font-size: 0.85rem;
+.pdf-link {
+    display: inline-block;
+    max-width: 100%;
 }
 
 @media (max-width: 600px) {
@@ -78,49 +71,8 @@ time {
         font-size: 1.7rem;
     }
 
-}
-
-/* Article language switch */
-
-.language {
-    display: flex;
-    gap: 10px;
-    margin: 18px 0 35px;
-}
-
-.language button {
-    width: 88px;
-    height: 38px;
-    padding: 0;
-    font: inherit;
-    background: white;
-    border: 1px solid #111;
-    cursor: pointer;
-}
-
-.language button:hover {
-    opacity: 0.6;
-}
-
-.article-title-en {
-    font-size: 1.15rem;
-    font-weight: normal;
-    margin: 4px 0 0;
-}
-
-article time {
-    display: block;
-    margin-bottom: 8px;
-}
-
-
-.home-title-en {
-    font-size: 0.95rem;
-    margin-top: -22px;
-    margin-bottom: 8px;
-}
-
-.home-entry h2 {
-    margin-bottom: 0;
+    .pdf-link {
+        overflow-wrap: anywhere;
+    }
 }
 
